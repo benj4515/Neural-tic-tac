@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.chart.XYChart?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+
+<AnchorPane prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <children>
+      <TextField fx:id="txt1" layoutX="37.0" layoutY="72.0" />
+      <TextField fx:id="txt2" layoutX="237.0" layoutY="72.0" />
+      <Label fx:id="lbl1" layoutX="37.0" layoutY="125.0" text="Label" />
+      <Label fx:id="lbl2" layoutX="37.0" layoutY="157.0" text="Label" />
+      <Button layoutX="37.0" layoutY="200.0" text="Predict" onAction="#handlePredict"/>
+      <LineChart fx:id="lineChart" layoutX="37.0" layoutY="250.0" prefHeight="300.0" prefWidth="500.0" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="250.0">
+         <xAxis>
+            <NumberAxis lowerBound="-10" upperBound="10" tickUnit="1" label="X-Axis" />
+         </xAxis>
+         <yAxis>
+            <NumberAxis lowerBound="-10" upperBound="10" tickUnit="1" label="Y-Axis" />
+         </yAxis>
+      </LineChart>
+   </children>
+</AnchorPane>

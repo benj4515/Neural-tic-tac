@@ -12,7 +12,7 @@ public class App {
                 Arrays.asList(4.0, 5.0), Arrays.asList(1.0, 0.0),
                 Arrays.asList(2.0, 1.0), Arrays.asList(3.0, 2.0)
         );
-        List<Double> answers = Arrays.asList(1.0, 0.0, 0.0, 0.0, 1.0, 1.0);
+        List<Double> answers = Arrays.asList(1.0, 1.0, 1.0, 0.0, 0.0, 0.0);
 
         List<List<Double>> trainData = data.subList(0, 6);
         List<List<Double>> valData = Arrays.asList(
@@ -26,6 +26,7 @@ public class App {
 
         System.out.println(String.format("Prediction for (3, 3): %.10f", network.predict(3.0, 3.0)));
         System.out.println(String.format("Prediction for (4, 4): %.10f", network.predict(4.0, 4.0)));
+        System.out.println(String.format("Prediction for (4, 4): %.10f", network.predict(7.0, 3.0)));
     }
 }
 
