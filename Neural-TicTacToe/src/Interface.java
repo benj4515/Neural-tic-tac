@@ -17,7 +17,7 @@ import javafx.stage.Stage;
 import java.util.List;
 import java.util.Objects;
 
-public class Brugerflade extends Application {
+public class Interface extends Application {
     @FXML
     private Canvas canvasAddPoints;
     @FXML
@@ -59,7 +59,7 @@ public class Brugerflade extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        FXMLLoader loader = new FXMLLoader(Objects.requireNonNull(getClass().getResource("Brugerflade.fxml")));
+        FXMLLoader loader = new FXMLLoader(Objects.requireNonNull(getClass().getResource("Interface.fxml")));
         loader.setController(this);
         Parent root = loader.load();
         primaryStage.setTitle("Please wait while the network is training...");
@@ -75,9 +75,11 @@ public class Brugerflade extends Application {
         canvasPredict.heightProperty().bind(((AnchorPane) canvasPredict.getParent()).heightProperty().subtract(166));
 
         // Initialize the network
-        network = new Network(20000, 0.01, new int[]{2, 200, 1});
+        int epochs = 20000;
+        int neurons = 200;
+        network = new Network(epochs, 0.01, new int[]{2, neurons, 1});
 
-        // Training data
+        // Training data and answers
         data = List.of(
                 List.of(2.0, 3.0), List.of(3.0, 4.0),
                 List.of(4.0, 5.0), List.of(1.0, 0.0),
@@ -89,11 +91,15 @@ public class Brugerflade extends Application {
         );
         answers = List.of(1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0);
 
-        // Train the network
-        network.train(data.subList(0, 6), answers.subList(0, 6), List.of(List.of(3.0, 3.0), List.of(4.0, 4.0)), List.of(1.0, 1.0));
+        // Train the network, the sublist is the amount of data used for training.
+        network.train(data.subList(0, 14), answers.subList(0, 14), List.of(List.of(3.0, 3.0), List.of(4.0, 4.0)), List.of(1.0, 1.0));
 
         // Set the title of the window
         primaryStage.setTitle("Neural Accuracy Map");
+
+        // Set ReTraining TestField Text
+        txtEpochs.setText(epochs + "");
+        txtNeurons.setText(neurons + "");
 
         // Set the button actions
         btnAddPoints.setOnAction(event -> handleAddPoints());

@@ -27,8 +27,8 @@
       <Text layoutX="446.0" layoutY="73.0" strokeType="OUTSIDE" strokeWidth="0.0" text="The recommended Grid Points is 100000 (one hundred thousand)." />
       <Text layoutX="446.0" layoutY="103.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Window scaling is unstable, use with caution." />
       <Text fill="RED" layoutX="446.0" layoutY="134.0" strokeType="OUTSIDE" strokeWidth="0.0" text="DO NOT CLICK &quot;Add Grid Points&quot; MULTIPLE TIMES." />
-      <TextField fx:id="txtEpochs" layoutX="867.0" layoutY="55.0" prefHeight="25.0" prefWidth="119.0" promptText="Epochs" text="20000" />
-      <TextField fx:id="txtNeurons" layoutX="867.0" layoutY="85.0" prefHeight="25.0" prefWidth="119.0" promptText="Neurons" text="200" />
+      <TextField fx:id="txtEpochs" layoutX="867.0" layoutY="55.0" prefHeight="25.0" prefWidth="119.0" promptText="Epochs" />
+      <TextField fx:id="txtNeurons" layoutX="867.0" layoutY="85.0" prefHeight="25.0" prefWidth="119.0" promptText="Neurons" />
       <Button fx:id="btnRetrain" layoutX="867.0" layoutY="116.0" onAction="#handleRetrain" prefHeight="25.0" prefWidth="119.0" text="Retrain Network" />
       <Text fill="RED" layoutX="819.0" layoutY="103.0" rotate="-90.0" strokeType="OUTSIDE" strokeWidth="0.0" text="DO NOT CLICK" />
    </children>

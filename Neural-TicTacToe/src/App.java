@@ -6,6 +6,7 @@ public class App {
         app.trainAndPredict();
     }
 
+    // Dont touch this method. For changes in the network, change the Interface.java file.
     public void trainAndPredict() {
         List<List<Double>> data = Arrays.asList(
                 Arrays.asList(2.0, 3.0), Arrays.asList(3.0, 4.0),
@@ -14,11 +15,11 @@ public class App {
         );
         List<Double> answers = Arrays.asList(1.0, 1.0, 1.0, 0.0, 0.0, 0.0);
 
-        List<List<Double>> trainData = data.subList(0, 6);
+        List<List<Double>> trainData = data.subList(0, 14);
         List<List<Double>> valData = Arrays.asList(
                 Arrays.asList(3.0, 3.0), Arrays.asList(4.0, 4.0)
         );
-        List<Double> trainAnswers = answers.subList(0, 6);
+        List<Double> trainAnswers = answers.subList(0, 14);
         List<Double> valAnswers = Arrays.asList(1.0, 1.0);
 
         Network network = new Network(20000, 0.01, new int[]{2, 20, 1}); // Increased neurons and adjusted learning rate
