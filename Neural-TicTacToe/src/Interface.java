@@ -147,6 +147,23 @@ public class Interface extends Application {
         return Math.exp(sliderZoom.getValue());
     }
 
+    private double computeConfidence(double value1, double value2, double prediction) {
+        double target = value2 > value1 ? 1.0 : 0.0;
+        return 1.0 - Math.abs(prediction - target);  // Confidence from 1 (green) to 0.5 (yellow) to 0 (green)
+    }
+
+    private Color interpolateColor(double value1, double value2, double prediction) {
+        double confidence = computeConfidence(value1, value2, prediction);
+
+        if ((value2 > value1 && prediction > 0.5) || (value2 <= value1 && prediction <= 0.5)) {
+            // Prediction is correct: smoothly go from green → yellow → green
+            return Color.GREEN.interpolate(Color.YELLOW, 1.0 - confidence);
+        } else {
+            // Prediction is incorrect: smoothly go from yellow → red
+            return Color.YELLOW.interpolate(Color.RED, 1.0 - confidence);
+        }
+    }
+
     @FXML
     private void handleAddPoints() {
         try {
@@ -169,11 +186,7 @@ public class Interface extends Application {
 
                         gc.save();
                         gc.scale(zoom, zoom);
-                        if ((y > x && prediction > 0.5) || (y <= x && prediction <= 0.5)) {
-                            gc.setFill(Color.GREEN);
-                        } else {
-                            gc.setFill(Color.RED);
-                        }
+                        gc.setFill(interpolateColor(x, y, prediction));
                         gc.fillOval(x + canvasUnified.getWidth() / (2 * zoom), y + canvasUnified.getHeight() / (2 * zoom), pointSize / zoom, pointSize / zoom);
                         gc.restore();
                     }
@@ -181,39 +194,40 @@ public class Interface extends Application {
                 // Draw the line x = y
                 gc.setStroke(Color.BLACK);
                 gc.setLineWidth(2);
-                gc.strokeLine(0, 0, canvasUnified.getWidth(), canvasUnified.getHeight());
+                gc.strokeLine(
+                        canvasUnified.getWidth() / 2 - canvasUnified.getHeight() / 2,  // Start x
+                        0,  // Start y
+                        canvasUnified.getWidth() / 2 + canvasUnified.getHeight() / 2,  // End x
+                        canvasUnified.getHeight()  // End y
+                );
             });
         } catch (NumberFormatException e) {
             lbl1.setText("Invalid number of points");
         }
     }
 
-
     private void plotTrainingPoints() {
-        GraphicsContext gc = canvasUnified.getGraphicsContext2D();
-        gc.clearRect(0, 0, canvasUnified.getWidth(), canvasUnified.getHeight());
+        drawOnCanvas(() -> {
+            GraphicsContext gc = canvasUnified.getGraphicsContext2D();
+            gc.clearRect(0, 0, canvasUnified.getWidth(), canvasUnified.getHeight());
 
-        double pointSize = sliderPointSize.getValue();
-        double zoom = getExponentialZoomValue();
+            double pointSize = sliderPointSize.getValue();
+            double zoom = getExponentialZoomValue();
 
-        for (int i = 0; i < data.size(); i++) {
-            List<Double> point = data.get(i);
-            double x = point.get(0);
-            double y = point.get(1);
-            double answer = answers.get(i);
+            for (int i = 0; i < data.size(); i++) {
+                List<Double> point = data.get(i);
+                double x = point.get(0);
+                double y = point.get(1);
+                double answer = answers.get(i);
+                double prediction = network.predict(x, y);
 
-            Platform.runLater(() -> {
                 gc.save();
                 gc.scale(zoom, zoom);
-                if ((y > x && answer > 0.5) || (y <= x && answer <= 0.5)) {
-                    gc.setFill(Color.GREEN);
-                } else {
-                    gc.setFill(Color.RED);
-                }
+                gc.setFill(interpolateColor(x, y, prediction));
                 gc.fillOval(x + canvasUnified.getWidth() / (2 * zoom), y + canvasUnified.getHeight() / (2 * zoom), pointSize / zoom, pointSize / zoom);
                 gc.restore();
-            });
-        }
+            }
+        });
     }
 
     @FXML
@@ -233,13 +247,7 @@ public class Interface extends Application {
 
                 gc.save();
                 gc.scale(zoom, zoom);
-                if ((value2 > value1 && prediction > 0.5) || (value2 <= value1 && prediction <= 0.5)) {
-                    gc.setFill(Color.GREEN);
-                    lbl2.setText("Prediction is correct");
-                } else {
-                    gc.setFill(Color.RED);
-                    lbl2.setText("Prediction is incorrect");
-                }
+                gc.setFill(interpolateColor(value1, value2, prediction));
                 gc.fillOval(value1 + canvasUnified.getWidth() / (2 * zoom), value2 + canvasUnified.getHeight() / (2 * zoom), pointSize / zoom, pointSize / zoom);
                 gc.restore();
             });
