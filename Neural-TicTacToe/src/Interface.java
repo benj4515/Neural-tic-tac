@@ -97,7 +97,7 @@ public class Interface extends Application {
                 {8.18, 7.61},
                 {-8.31, 2.48}
         };
-        // Answers for the training data points
+        // Answers for the corresponding training data points
         double[] answersArray = {1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0};
 
         // Determine the number of input neurons from the length of the first inner array
