@@ -79,14 +79,29 @@ public class Brugerflade extends Application {
         }
         lineChart.getData().add(series);
 
-        // Plot the 14 training points as separate series with alphabetical labels
+        // Plot the 14 training points with colors based on answers and position relative to x=y line
         char label = 'A';
-        for (List<Double> point : data) {
+        for (int i = 0; i < data.size(); i++) {
+            List<Double> point = data.get(i);
             double x = point.get(0);
             double y = point.get(1);
+            double answer = answers.get(i);
+
             XYChart.Series<Number, Number> pointSeries = new XYChart.Series<>();
             pointSeries.setName("Point " + label);
-            pointSeries.getData().add(new XYChart.Data<>(x, y));
+            XYChart.Data<Number, Number> dataPoint = new XYChart.Data<>(x, y);
+
+            dataPoint.nodeProperty().addListener((observable, oldValue, newValue) -> {
+                if (newValue != null) {
+                    if ((y > x && answer > 0.5) || (y <= x && answer <= 0.5)) {
+                        newValue.setStyle("-fx-background-color: green;");
+                    } else {
+                        newValue.setStyle("-fx-background-color: red;");
+                    }
+                }
+            });
+
+            pointSeries.getData().add(dataPoint);
             lineChart.getData().add(pointSeries);
             label++;
         }
@@ -109,8 +124,19 @@ public class Brugerflade extends Application {
             // Plot the new prediction point
             XYChart.Series<Number, Number> pointSeries = new XYChart.Series<>();
             pointSeries.setName("Prediction Point");
-            pointSeries.getData().add(new XYChart.Data<>(value1, value2));
+            XYChart.Data<Number, Number> dataPoint = new XYChart.Data<>(value1, value2);
 
+            dataPoint.nodeProperty().addListener((observable, oldValue, newValue) -> {
+                if (newValue != null) {
+                    if ((value2 > value1 && prediction > 0.5) || (value2 <= value1 && prediction <= 0.5)) {
+                        newValue.setStyle("-fx-background-color: green;");
+                    } else {
+                        newValue.setStyle("-fx-background-color: red;");
+                    }
+                }
+            });
+
+            pointSeries.getData().add(dataPoint);
             lineChart.getData().add(pointSeries);
         } catch (NumberFormatException e) {
             lbl1.setText("Invalid input");
