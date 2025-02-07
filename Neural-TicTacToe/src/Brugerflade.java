@@ -20,6 +20,8 @@ public class Brugerflade extends Application {
     @FXML
     private TextField txt2;
     @FXML
+    private TextField txtSpacing;
+    @FXML
     private Label lbl1;
     @FXML
     private Label lbl2;
@@ -88,7 +90,7 @@ public class Brugerflade extends Application {
         try {
             int numPoints = Integer.parseInt(txtPoints.getText());
             int gridSize = (int) Math.sqrt(numPoints);
-            double spacing = 1.0; // Adjust spacing as needed
+            double spacing = Double.parseDouble(txtSpacing.getText()); // Adjust spacing as needed
 
             // Clear previous grid points
             lineChart.getData().removeIf(series -> series.getName().startsWith("Grid Point"));
