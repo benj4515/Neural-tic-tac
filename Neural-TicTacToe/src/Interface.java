@@ -14,8 +14,10 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class Interface extends Application {
     @FXML
@@ -78,25 +80,42 @@ public class Interface extends Application {
         canvasLine.widthProperty().bind(((AnchorPane) canvasLine.getParent()).widthProperty());
         canvasLine.heightProperty().bind(((AnchorPane) canvasLine.getParent()).heightProperty().subtract(166));
 
+        // Training data points
+        double[][] dataArray = {
+                {2.0, 3.0},
+                {3.0, 4.0},
+                {4.0, 5.0},
+                {1.0, 0.0},
+                {2.0, 1.0},
+                {3.0, 2.0},
+                {3.2, 2.76},
+                {-2.07, 3.79},
+                {-5.82, -3.97},
+                {3.11, -3.46},
+                {-2.27, -1.55},
+                {1.86, 2.16},
+                {8.18, 7.61},
+                {-8.31, 2.48}
+        };
+        // Answers for the training data points
+        double[] answersArray = {1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0};
+
+        // Determine the number of input neurons from the length of the first inner array
+        int inputNeurons = dataArray[0].length;
+
+        // Convert double[][] to List<List<Double>> and double[] to List<Double> in one line each
+        List<List<Double>> data = Arrays.stream(dataArray).map(row -> Arrays.stream(row).boxed().collect(Collectors.toList())).collect(Collectors.toList());
+        List<Double> answers = Arrays.stream(answersArray).boxed().collect(Collectors.toList());
+
         // Initialize the network
         int epochs = 20000;
         int neurons = 200;
-        network = new Network(epochs, 0.01, new int[]{2, neurons, 1});
 
-        // Training data and answers
-        data = List.of(
-                List.of(2.0, 3.0), List.of(3.0, 4.0),
-                List.of(4.0, 5.0), List.of(1.0, 0.0),
-                List.of(2.0, 1.0), List.of(3.0, 2.0),
-                List.of(3.2, 2.76), List.of(-2.07, 3.79),
-                List.of(-5.82, -3.97), List.of(3.11, -3.46),
-                List.of(-2.27, -1.55), List.of(1.86, 2.16),
-                List.of(8.18, 7.61), List.of(-8.31, 2.48)
-        );
-        answers = List.of(1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0);
+        // Initialize the network, InputNeurons are Dimensions of the dataArray, neurons is the number of neurons in the hidden layer and 1 is the output layer
+        network = new Network(epochs, 0.01, new int[]{inputNeurons, neurons, 1});
 
         // Train the network, the sublist is the amount of data used for training.
-        network.train(data.subList(0, 14), answers.subList(0, 14), List.of(List.of(3.0, 3.0), List.of(4.0, 4.0)), List.of(1.0, 1.0));
+        network.train(data, answers, List.of(List.of(3.0, 3.0), List.of(4.0, 4.0)), List.of(1.0, 1.0));
 
         // Set the title of the window
         primaryStage.setTitle("Neural Accuracy Map");
