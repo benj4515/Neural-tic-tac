@@ -10,11 +10,14 @@ import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import javafx.scene.control.Button;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 public class Brugerflade extends Application {
+    @FXML
+    public Button btnClearGrid;
     @FXML
     private TextField txt1;
     @FXML
@@ -90,12 +93,13 @@ public class Brugerflade extends Application {
         try {
             int numPoints = Integer.parseInt(txtPoints.getText());
             int gridSize = (int) Math.sqrt(numPoints);
-            double spacing = Double.parseDouble(txtSpacing.getText()); // Adjust spacing as needed
+            double spacing = Double.parseDouble(txtSpacing.getText());
 
             // Clear previous grid points
             lineChart.getData().removeIf(series -> series.getName().startsWith("Grid Point"));
 
-            // Add new grid points
+            // Collect new grid points
+            List<XYChart.Series<Number, Number>> seriesList = new ArrayList<>();
             for (int i = -gridSize / 2; i <= gridSize / 2; i++) {
                 for (int j = -gridSize / 2; j <= gridSize / 2; j++) {
                     double x = i * spacing;
@@ -117,9 +121,12 @@ public class Brugerflade extends Application {
                     });
 
                     pointSeries.getData().add(dataPoint);
-                    lineChart.getData().add(pointSeries);
+                    seriesList.add(pointSeries);
                 }
             }
+
+            // Add all series to the chart at once
+            lineChart.getData().addAll(seriesList);
         } catch (NumberFormatException e) {
             lbl1.setText("Invalid number of points");
         }
@@ -163,6 +170,15 @@ public class Brugerflade extends Application {
     }
 
     @FXML
+    private void handleClearGrid() {
+        lineChart.getData().removeIf(series ->
+            series.getName().startsWith("Grid Point") ||
+            series.getName().startsWith("Prediction Point") ||
+            series.getName().startsWith("Point")
+        );
+    }
+
+    @FXML
     private void handlePredict() {
         try {
             double value1 = Double.parseDouble(txt1.getText());
@@ -173,7 +189,7 @@ public class Brugerflade extends Application {
             // Clear previous prediction points
             lineChart.getData().removeIf(series -> "Prediction Point".equals(series.getName()));
 
-            // Plot the new prediction point
+            // Collect the new prediction point
             XYChart.Series<Number, Number> pointSeries = new XYChart.Series<>();
             pointSeries.setName("Prediction Point");
             XYChart.Data<Number, Number> dataPoint = new XYChart.Data<>(value1, value2);
@@ -191,6 +207,8 @@ public class Brugerflade extends Application {
             });
 
             pointSeries.getData().add(dataPoint);
+
+            // Add the series to the chart at once
             lineChart.getData().add(pointSeries);
         } catch (NumberFormatException e) {
             lbl1.setText("Invalid input");
