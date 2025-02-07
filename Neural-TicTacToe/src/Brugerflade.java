@@ -8,6 +8,7 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
+import javafx.scene.control.Button;
 
 import java.util.Arrays;
 import java.util.List;
@@ -24,6 +25,12 @@ public class Brugerflade extends Application {
     private Label lbl2;
     @FXML
     private LineChart<Number, Number> lineChart;
+    @FXML
+    private TextField txtPoints;
+    @FXML
+    private Button btnAddPoints;
+    @FXML
+    private Button btnPlotTrainingPoints;
 
     private Network network;
     private List<List<Double>> data;
@@ -69,6 +76,51 @@ public class Brugerflade extends Application {
 
         // Initialize the chart
         initializeChart();
+
+        // Set the button action
+        btnAddPoints.setOnAction(event -> handleAddPoints());
+        btnPlotTrainingPoints.setOnAction(event -> plotTrainingPoints());
+    }
+
+    // Add this method to handle adding points
+    @FXML
+    private void handleAddPoints() {
+        try {
+            int numPoints = Integer.parseInt(txtPoints.getText());
+            int gridSize = (int) Math.sqrt(numPoints);
+            double spacing = 1.0; // Adjust spacing as needed
+
+            // Clear previous grid points
+            lineChart.getData().removeIf(series -> series.getName().startsWith("Grid Point"));
+
+            // Add new grid points
+            for (int i = -gridSize / 2; i <= gridSize / 2; i++) {
+                for (int j = -gridSize / 2; j <= gridSize / 2; j++) {
+                    double x = i * spacing;
+                    double y = j * spacing;
+                    double prediction = network.predict(x, y);
+
+                    XYChart.Series<Number, Number> pointSeries = new XYChart.Series<>();
+                    pointSeries.setName("Grid Point (" + i + "," + j + ")");
+                    XYChart.Data<Number, Number> dataPoint = new XYChart.Data<>(x, y);
+
+                    dataPoint.nodeProperty().addListener((observable, oldValue, newValue) -> {
+                        if (newValue != null) {
+                            if ((y > x && prediction > 0.5) || (y <= x && prediction <= 0.5)) {
+                                newValue.setStyle("-fx-background-color: green;");
+                            } else {
+                                newValue.setStyle("-fx-background-color: red;");
+                            }
+                        }
+                    });
+
+                    pointSeries.getData().add(dataPoint);
+                    lineChart.getData().add(pointSeries);
+                }
+            }
+        } catch (NumberFormatException e) {
+            lbl1.setText("Invalid number of points");
+        }
     }
 
     private void initializeChart() {
@@ -78,8 +130,9 @@ public class Brugerflade extends Application {
             series.getData().add(new XYChart.Data<>(i, i));
         }
         lineChart.getData().add(series);
+    }
 
-        // Plot the 14 training points with colors based on answers and position relative to x=y line
+    private void plotTrainingPoints() {
         char label = 'A';
         for (int i = 0; i < data.size(); i++) {
             List<Double> point = data.get(i);
@@ -115,9 +168,6 @@ public class Brugerflade extends Application {
             double prediction = network.predict(value1, value2);
             lbl1.setText(String.format("Prediction: %.10f", prediction));
 
-            boolean result = (value2 > value1 && prediction > 0.5);
-            lbl2.setText(String.valueOf(result));
-
             // Clear previous prediction points
             lineChart.getData().removeIf(series -> "Prediction Point".equals(series.getName()));
 
@@ -130,8 +180,10 @@ public class Brugerflade extends Application {
                 if (newValue != null) {
                     if ((value2 > value1 && prediction > 0.5) || (value2 <= value1 && prediction <= 0.5)) {
                         newValue.setStyle("-fx-background-color: green;");
+                        lbl2.setText("Prediction is correct");
                     } else {
                         newValue.setStyle("-fx-background-color: red;");
+                        lbl2.setText("Prediction is incorrect");
                     }
                 }
             });
@@ -140,7 +192,6 @@ public class Brugerflade extends Application {
             lineChart.getData().add(pointSeries);
         } catch (NumberFormatException e) {
             lbl1.setText("Invalid input");
-            lbl2.setText("false");
         }
     }
 }
