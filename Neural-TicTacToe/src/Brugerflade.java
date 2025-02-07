@@ -5,21 +5,25 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.chart.LineChart;
-import javafx.scene.chart.XYChart;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.AnchorPane;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
-import javafx.scene.control.Button;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 public class Brugerflade extends Application {
     @FXML
-    public Button btnClearGrid;
+    private Canvas canvasAddPoints;
+    @FXML
+    private Canvas canvasPlotTrainingPoints;
+    @FXML
+    private Canvas canvasPredict;
     @FXML
     private TextField txt1;
     @FXML
@@ -31,13 +35,13 @@ public class Brugerflade extends Application {
     @FXML
     private Label lbl2;
     @FXML
-    private LineChart<Number, Number> lineChart;
-    @FXML
     private TextField txtPoints;
     @FXML
     private Button btnAddPoints;
     @FXML
     private Button btnPlotTrainingPoints;
+    @FXML
+    private Button btnClearGrid;
 
     private Network network;
     private List<List<Double>> data;
@@ -56,82 +60,84 @@ public class Brugerflade extends Application {
         primaryStage.setScene(new Scene(root, 1000, 1000));
         primaryStage.show();
 
+        // Bind canvas size to the parent container size
+        canvasAddPoints.widthProperty().bind(((AnchorPane) canvasAddPoints.getParent()).widthProperty());
+        canvasAddPoints.heightProperty().bind(((AnchorPane) canvasAddPoints.getParent()).heightProperty().subtract(166));
+        canvasPlotTrainingPoints.widthProperty().bind(((AnchorPane) canvasPlotTrainingPoints.getParent()).widthProperty());
+        canvasPlotTrainingPoints.heightProperty().bind(((AnchorPane) canvasPlotTrainingPoints.getParent()).heightProperty().subtract(166));
+        canvasPredict.widthProperty().bind(((AnchorPane) canvasPredict.getParent()).widthProperty());
+        canvasPredict.heightProperty().bind(((AnchorPane) canvasPredict.getParent()).heightProperty().subtract(166));
+
         // Initialize the network
         network = new Network(20000, 0.01, new int[]{2, 20, 1});
 
         // Training data
-        data = Arrays.asList(
-                Arrays.asList(2.0, 3.0), Arrays.asList(3.0, 4.0),
-                Arrays.asList(4.0, 5.0), Arrays.asList(1.0, 0.0),
-                Arrays.asList(2.0, 1.0), Arrays.asList(3.0, 2.0),
-                Arrays.asList(3.2, 2.76), Arrays.asList(-2.07, 3.79),
-                Arrays.asList(-5.82, -3.97), Arrays.asList(3.11, -3.46),
-                Arrays.asList(-2.27, -1.55), Arrays.asList(1.86, 2.16),
-                Arrays.asList(8.18, 7.61), Arrays.asList(-8.31, 2.48)
+        data = List.of(
+                List.of(2.0, 3.0), List.of(3.0, 4.0),
+                List.of(4.0, 5.0), List.of(1.0, 0.0),
+                List.of(2.0, 1.0), List.of(3.0, 2.0),
+                List.of(3.2, 2.76), List.of(-2.07, 3.79),
+                List.of(-5.82, -3.97), List.of(3.11, -3.46),
+                List.of(-2.27, -1.55), List.of(1.86, 2.16),
+                List.of(8.18, 7.61), List.of(-8.31, 2.48)
         );
-        answers = Arrays.asList(1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0);
-
-        List<List<Double>> trainData = data.subList(0, 6);
-        List<List<Double>> valData = Arrays.asList(
-                Arrays.asList(3.0, 3.0), Arrays.asList(4.0, 4.0)
-        );
-        List<Double> trainAnswers = answers.subList(0, 6);
-        List<Double> valAnswers = Arrays.asList(1.0, 1.0);
+        answers = List.of(1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0);
 
         // Train the network
-        network.train(trainData, trainAnswers, valData, valAnswers);
+        network.train(data.subList(0, 6), answers.subList(0, 6), List.of(List.of(3.0, 3.0), List.of(4.0, 4.0)), List.of(1.0, 1.0));
 
-        // Initialize the chart
-        initializeChart();
-
-        // Set the button action
+        // Set the button actions
         btnAddPoints.setOnAction(event -> handleAddPoints());
         btnPlotTrainingPoints.setOnAction(event -> plotTrainingPoints());
+        btnClearGrid.setOnAction(event -> handleClearGrid());
+
+        // Add a shutdown hook to stop all running threads
+        primaryStage.setOnCloseRequest(event -> {
+            System.exit(0);
+        });
     }
 
-    // Add this method to handle adding points
     @FXML
     private void handleAddPoints() {
         try {
             int numPoints = Integer.parseInt(txtPoints.getText());
             int gridSize = (int) Math.sqrt(numPoints);
             double spacing = Double.parseDouble(txtSpacing.getText());
+            System.out.println("Grid size: " + gridSize + ", Spacing: " + spacing);
 
-            // Clear previous grid points
-            lineChart.getData().removeIf(series -> series.getName().startsWith("Grid Point"));
+            // Clear the canvas for add points
+            GraphicsContext gc = canvasAddPoints.getGraphicsContext2D();
+            gc.clearRect(0, 0, canvasAddPoints.getWidth(), canvasAddPoints.getHeight());
+
+            // Calculate the scale factor to fit points within the canvas
+            double scaleX = canvasAddPoints.getWidth() / (gridSize * spacing);
+            double scaleY = canvasAddPoints.getHeight() / (gridSize * spacing);
+            double scale = Math.min(scaleX, scaleY);
 
             // Create a task to generate and add points in the background
             Task<Void> task = new Task<>() {
                 @Override
                 protected Void call() {
-                    List<XYChart.Series<Number, Number>> seriesList = new ArrayList<>();
                     for (int i = -gridSize / 2; i <= gridSize / 2; i++) {
                         for (int j = -gridSize / 2; j <= gridSize / 2; j++) {
                             double x = i * spacing;
                             double y = j * spacing;
                             double prediction = network.predict(x, y);
 
-                            XYChart.Series<Number, Number> pointSeries = new XYChart.Series<>();
-                            pointSeries.setName("Grid Point (" + i + "," + j + ")");
-                            XYChart.Data<Number, Number> dataPoint = new XYChart.Data<>(x, y);
-
-                            dataPoint.nodeProperty().addListener((observable, oldValue, newValue) -> {
-                                if (newValue != null) {
-                                    if ((y > x && prediction > 0.5) || (y <= x && prediction <= 0.5)) {
-                                        newValue.setStyle("-fx-background-color: green;");
-                                    } else {
-                                        newValue.setStyle("-fx-background-color: red;");
-                                    }
+                            // Draw the point on the canvas
+                            Platform.runLater(() -> {
+                                gc.save();
+                                gc.scale(scale, scale);
+                                if ((y > x && prediction > 0.5) || (y <= x && prediction <= 0.5)) {
+                                    gc.setFill(Color.GREEN);
+                                } else {
+                                    gc.setFill(Color.RED);
                                 }
+                                gc.fillOval(x + canvasAddPoints.getWidth() / (2 * scale), y + canvasAddPoints.getHeight() / (2 * scale), 5 / scale, 5 / scale);
+                                gc.restore();
                             });
-
-                            pointSeries.getData().add(dataPoint);
-                            seriesList.add(pointSeries);
                         }
                     }
-
-                    // Update the chart on the JavaFX Application Thread
-                    Platform.runLater(() -> lineChart.getData().addAll(seriesList));
                     return null;
                 }
             };
@@ -143,50 +149,35 @@ public class Brugerflade extends Application {
         }
     }
 
-    private void initializeChart() {
-        XYChart.Series<Number, Number> series = new XYChart.Series<>();
-        series.setName("x = y Line");
-        for (int i = -10; i <= 10; i++) {
-            series.getData().add(new XYChart.Data<>(i, i));
-        }
-        lineChart.getData().add(series);
-    }
-
     private void plotTrainingPoints() {
-        char label = 'A';
+        GraphicsContext gc = canvasPlotTrainingPoints.getGraphicsContext2D();
+        gc.clearRect(0, 0, canvasPlotTrainingPoints.getWidth(), canvasPlotTrainingPoints.getHeight());
+
+        // Calculate the scale factor to fit points within the canvas
+        double maxX = data.stream().mapToDouble(point -> Math.abs(point.get(0))).max().orElse(1);
+        double maxY = data.stream().mapToDouble(point -> Math.abs(point.get(1))).max().orElse(1);
+        double scaleX = canvasPlotTrainingPoints.getWidth() / (2 * maxX);
+        double scaleY = canvasPlotTrainingPoints.getHeight() / (2 * maxY);
+        double scale = Math.min(scaleX, scaleY);
+
         for (int i = 0; i < data.size(); i++) {
             List<Double> point = data.get(i);
             double x = point.get(0);
             double y = point.get(1);
             double answer = answers.get(i);
 
-            XYChart.Series<Number, Number> pointSeries = new XYChart.Series<>();
-            pointSeries.setName("Point " + label);
-            XYChart.Data<Number, Number> dataPoint = new XYChart.Data<>(x, y);
-
-            dataPoint.nodeProperty().addListener((observable, oldValue, newValue) -> {
-                if (newValue != null) {
-                    if ((y > x && answer > 0.5) || (y <= x && answer <= 0.5)) {
-                        newValue.setStyle("-fx-background-color: green;");
-                    } else {
-                        newValue.setStyle("-fx-background-color: red;");
-                    }
+            Platform.runLater(() -> {
+                gc.save();
+                gc.scale(scale, scale);
+                if ((y > x && answer > 0.5) || (y <= x && answer <= 0.5)) {
+                    gc.setFill(Color.GREEN);
+                } else {
+                    gc.setFill(Color.RED);
                 }
+                gc.fillOval(x + canvasPlotTrainingPoints.getWidth() / (2 * scale), y + canvasPlotTrainingPoints.getHeight() / (2 * scale), 5 / scale, 5 / scale);
+                gc.restore();
             });
-
-            pointSeries.getData().add(dataPoint);
-            lineChart.getData().add(pointSeries);
-            label++;
         }
-    }
-
-    @FXML
-    private void handleClearGrid() {
-        lineChart.getData().removeIf(series ->
-            series.getName().startsWith("Grid Point") ||
-            series.getName().startsWith("Prediction Point") ||
-            series.getName().startsWith("Point")
-        );
     }
 
     @FXML
@@ -197,32 +188,40 @@ public class Brugerflade extends Application {
             double prediction = network.predict(value1, value2);
             lbl1.setText(String.format("Prediction: %.10f", prediction));
 
-            // Clear previous prediction points
-            lineChart.getData().removeIf(series -> "Prediction Point".equals(series.getName()));
+            // Clear the canvas for predictions
+            GraphicsContext gc = canvasPredict.getGraphicsContext2D();
 
-            // Collect the new prediction point
-            XYChart.Series<Number, Number> pointSeries = new XYChart.Series<>();
-            pointSeries.setName("Prediction Point");
-            XYChart.Data<Number, Number> dataPoint = new XYChart.Data<>(value1, value2);
+            // Calculate the scale factor to fit points within the canvas
+            double maxX = data.stream().mapToDouble(point -> Math.abs(point.get(0))).max().orElse(1);
+            double maxY = data.stream().mapToDouble(point -> Math.abs(point.get(1))).max().orElse(1);
+            double scaleX = canvasPredict.getWidth() / (2 * maxX);
+            double scaleY = canvasPredict.getHeight() / (2 * maxY);
+            double scale = Math.min(scaleX, scaleY);
 
-            dataPoint.nodeProperty().addListener((observable, oldValue, newValue) -> {
-                if (newValue != null) {
-                    if ((value2 > value1 && prediction > 0.5) || (value2 <= value1 && prediction <= 0.5)) {
-                        newValue.setStyle("-fx-background-color: green;");
-                        lbl2.setText("Prediction is correct");
-                    } else {
-                        newValue.setStyle("-fx-background-color: red;");
-                        lbl2.setText("Prediction is incorrect");
-                    }
-                }
-            });
-
-            pointSeries.getData().add(dataPoint);
-
-            // Add the series to the chart at once
-            lineChart.getData().add(pointSeries);
+            // Draw the prediction point on the canvas
+            gc.save();
+            gc.scale(scale, scale);
+            if ((value2 > value1 && prediction > 0.5) || (value2 <= value1 && prediction <= 0.5)) {
+                gc.setFill(Color.GREEN);
+                lbl2.setText("Prediction is correct");
+            } else {
+                gc.setFill(Color.RED);
+                lbl2.setText("Prediction is incorrect");
+            }
+            gc.fillOval(value1 + canvasPredict.getWidth() / (2 * scale), value2 + canvasPredict.getHeight() / (2 * scale), 5 / scale, 5 / scale);
+            gc.restore();
         } catch (NumberFormatException e) {
             lbl1.setText("Invalid input");
         }
+    }
+
+    @FXML
+    private void handleClearGrid() {
+        GraphicsContext gcAddPoints = canvasAddPoints.getGraphicsContext2D();
+        GraphicsContext gcPlotTrainingPoints = canvasPlotTrainingPoints.getGraphicsContext2D();
+        GraphicsContext gcPredict = canvasPredict.getGraphicsContext2D();
+        gcAddPoints.clearRect(0, 0, canvasAddPoints.getWidth(), canvasAddPoints.getHeight());
+        gcPlotTrainingPoints.clearRect(0, 0, canvasPlotTrainingPoints.getWidth(), canvasPlotTrainingPoints.getHeight());
+        gcPredict.clearRect(0, 0, canvasPredict.getWidth(), canvasPredict.getHeight());
     }
 }
