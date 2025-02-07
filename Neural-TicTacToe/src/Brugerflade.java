@@ -1,4 +1,6 @@
 import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -98,35 +100,44 @@ public class Brugerflade extends Application {
             // Clear previous grid points
             lineChart.getData().removeIf(series -> series.getName().startsWith("Grid Point"));
 
-            // Collect new grid points
-            List<XYChart.Series<Number, Number>> seriesList = new ArrayList<>();
-            for (int i = -gridSize / 2; i <= gridSize / 2; i++) {
-                for (int j = -gridSize / 2; j <= gridSize / 2; j++) {
-                    double x = i * spacing;
-                    double y = j * spacing;
-                    double prediction = network.predict(x, y);
+            // Create a task to generate and add points in the background
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() {
+                    List<XYChart.Series<Number, Number>> seriesList = new ArrayList<>();
+                    for (int i = -gridSize / 2; i <= gridSize / 2; i++) {
+                        for (int j = -gridSize / 2; j <= gridSize / 2; j++) {
+                            double x = i * spacing;
+                            double y = j * spacing;
+                            double prediction = network.predict(x, y);
 
-                    XYChart.Series<Number, Number> pointSeries = new XYChart.Series<>();
-                    pointSeries.setName("Grid Point (" + i + "," + j + ")");
-                    XYChart.Data<Number, Number> dataPoint = new XYChart.Data<>(x, y);
+                            XYChart.Series<Number, Number> pointSeries = new XYChart.Series<>();
+                            pointSeries.setName("Grid Point (" + i + "," + j + ")");
+                            XYChart.Data<Number, Number> dataPoint = new XYChart.Data<>(x, y);
 
-                    dataPoint.nodeProperty().addListener((observable, oldValue, newValue) -> {
-                        if (newValue != null) {
-                            if ((y > x && prediction > 0.5) || (y <= x && prediction <= 0.5)) {
-                                newValue.setStyle("-fx-background-color: green;");
-                            } else {
-                                newValue.setStyle("-fx-background-color: red;");
-                            }
+                            dataPoint.nodeProperty().addListener((observable, oldValue, newValue) -> {
+                                if (newValue != null) {
+                                    if ((y > x && prediction > 0.5) || (y <= x && prediction <= 0.5)) {
+                                        newValue.setStyle("-fx-background-color: green;");
+                                    } else {
+                                        newValue.setStyle("-fx-background-color: red;");
+                                    }
+                                }
+                            });
+
+                            pointSeries.getData().add(dataPoint);
+                            seriesList.add(pointSeries);
                         }
-                    });
+                    }
 
-                    pointSeries.getData().add(dataPoint);
-                    seriesList.add(pointSeries);
+                    // Update the chart on the JavaFX Application Thread
+                    Platform.runLater(() -> lineChart.getData().addAll(seriesList));
+                    return null;
                 }
-            }
+            };
 
-            // Add all series to the chart at once
-            lineChart.getData().addAll(seriesList);
+            // Start the task in a new thread
+            new Thread(task).start();
         } catch (NumberFormatException e) {
             lbl1.setText("Invalid number of points");
         }
