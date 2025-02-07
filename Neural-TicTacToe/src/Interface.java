@@ -219,11 +219,14 @@ public class Interface extends Application {
                 double x = point.get(0);
                 double y = point.get(1);
                 double answer = answers.get(i);
-                double prediction = network.predict(x, y);
 
                 gc.save();
                 gc.scale(zoom, zoom);
-                gc.setFill(interpolateColor(x, y, prediction));
+                if (answer == 1.0) {
+                    gc.setFill(Color.GREEN);
+                } else if (answer == 0.0) {
+                    gc.setFill(Color.RED);
+                }
                 gc.fillOval(x + canvasUnified.getWidth() / (2 * zoom), y + canvasUnified.getHeight() / (2 * zoom), pointSize / zoom, pointSize / zoom);
                 gc.restore();
             }
