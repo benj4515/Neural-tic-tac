@@ -56,7 +56,7 @@ public class Brugerflade extends Application {
         FXMLLoader loader = new FXMLLoader(Objects.requireNonNull(getClass().getResource("Brugerflade.fxml")));
         loader.setController(this);
         Parent root = loader.load();
-        primaryStage.setTitle("Brugerflade");
+        primaryStage.setTitle("Please wait while the network is training...");
         primaryStage.setScene(new Scene(root, 1000, 1000));
         primaryStage.show();
 
@@ -69,7 +69,7 @@ public class Brugerflade extends Application {
         canvasPredict.heightProperty().bind(((AnchorPane) canvasPredict.getParent()).heightProperty().subtract(166));
 
         // Initialize the network
-        network = new Network(20000, 0.01, new int[]{2, 20, 1});
+        network = new Network(20000, 0.01, new int[]{2, 200, 1});
 
         // Training data
         data = List.of(
@@ -85,6 +85,9 @@ public class Brugerflade extends Application {
 
         // Train the network
         network.train(data.subList(0, 6), answers.subList(0, 6), List.of(List.of(3.0, 3.0), List.of(4.0, 4.0)), List.of(1.0, 1.0));
+
+        // Set the title of the window
+        primaryStage.setTitle("Neural Accuracy Map");
 
         // Set the button actions
         btnAddPoints.setOnAction(event -> handleAddPoints());
