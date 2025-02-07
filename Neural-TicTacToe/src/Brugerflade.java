@@ -37,11 +37,17 @@ public class Brugerflade extends Application {
     @FXML
     private TextField txtPoints;
     @FXML
+    private TextField txtEpochs;
+    @FXML
+    private TextField txtNeurons;
+    @FXML
     private Button btnAddPoints;
     @FXML
     private Button btnPlotTrainingPoints;
     @FXML
     private Button btnClearGrid;
+    @FXML
+    private Button btnRetrain;
 
     private Network network;
     private List<List<Double>> data;
@@ -93,6 +99,7 @@ public class Brugerflade extends Application {
         btnAddPoints.setOnAction(event -> handleAddPoints());
         btnPlotTrainingPoints.setOnAction(event -> plotTrainingPoints());
         btnClearGrid.setOnAction(event -> handleClearGrid());
+        btnRetrain.setOnAction(event -> handleRetrain());
 
         // Add a shutdown hook to stop all running threads
         primaryStage.setOnCloseRequest(event -> {
@@ -215,6 +222,24 @@ public class Brugerflade extends Application {
             gc.restore();
         } catch (NumberFormatException e) {
             lbl1.setText("Invalid input");
+        }
+    }
+
+    @FXML
+    private void handleRetrain() {
+        try {
+            int epochs = Integer.parseInt(txtEpochs.getText());
+            int neurons = Integer.parseInt(txtNeurons.getText());
+
+            // Reinitialize the network with new parameters
+            network = new Network(epochs, 0.01, new int[]{2, neurons, 1});
+
+            // Retrain the network
+            network.train(data.subList(0, 6), answers.subList(0, 6), List.of(List.of(3.0, 3.0), List.of(4.0, 4.0)), List.of(1.0, 1.0));
+
+            lbl1.setText("Network retrained successfully");
+        } catch (NumberFormatException e) {
+            lbl1.setText("Invalid input for epochs or neurons");
         }
     }
 
