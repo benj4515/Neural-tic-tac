@@ -1,165 +1,197 @@
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class App {
-    public static void main( String[] args ) {
+    public static void main(String[] args) {
         App app = new App();
         app.trainAndPredict();
     }
 
     public void trainAndPredict() {
-        List<List<Integer>> data = new ArrayList<List<Integer>>();
-        data.add(Arrays.asList(115, 66));
-        data.add(Arrays.asList(175, 78));
-        data.add(Arrays.asList(205, 72));
-        data.add(Arrays.asList(120, 67));
-        List<Double> answers = Arrays.asList(1.0,0.0,0.0,1.0);
+        List<List<Double>> data = Arrays.asList(
+                Arrays.asList(2.0, 3.0), Arrays.asList(3.0, 4.0),
+                Arrays.asList(4.0, 5.0), Arrays.asList(1.0, 0.0),
+                Arrays.asList(2.0, 1.0), Arrays.asList(3.0, 2.0)
+        );
+        List<Double> answers = Arrays.asList(1.0, 0.0, 0.0, 0.0, 1.0, 1.0);
 
-        Network network500 = new Network(500);
-        network500.train(data, answers);
+        List<List<Double>> trainData = data.subList(0, 6);
+        List<List<Double>> valData = Arrays.asList(
+                Arrays.asList(3.0, 3.0), Arrays.asList(4.0, 4.0)
+        );
+        List<Double> trainAnswers = answers.subList(0, 6);
+        List<Double> valAnswers = Arrays.asList(1.0, 1.0);
 
-        Network network1000 = new Network(1000);
-        network1000.train(data, answers);
+        Network network = new Network(20000, 0.01, new int[]{2, 20, 1}); // Increased neurons and adjusted learning rate
+        network.train(trainData, trainAnswers, valData, valAnswers);
 
-        System.out.println("");
-        System.out.println(String.format("  male, 167, 73: network500: %.10f | network1000: %.10f", network500.predict(167, 73), network1000.predict(167, 73)));
-        System.out.println(String.format("female, 105, 67: network500: %.10f | network1000: %.10f", network500.predict(105, 67), network1000.predict(105, 67)));
-        System.out.println(String.format("female, 120, 72: network500: %.10f | network1000: %.10f", network500.predict(120, 72), network1000.predict(120, 72)));
-        System.out.println(String.format("  male, 143, 67: network500: %.10f | network1000: %.10f", network500.predict(143, 67), network1000.predict(120, 72)));
-        System.out.println(String.format(" male', 130, 66: network500: %.10f | network1000: %.10f", network500.predict(130, 66), network1000.predict(130, 66)));
+        System.out.println(String.format("Prediction for (3, 3): %.10f", network.predict(3.0, 3.0)));
+        System.out.println(String.format("Prediction for (4, 4): %.10f", network.predict(4.0, 4.0)));
+    }
+}
 
+class Network {
+    int epochs;
+    double learnFactor;
+    Layer[] layers;
+    Random random = new Random(42);
 
-    Network network500learn1 = new Network(500, 2.0);
-    network500learn1.train(data, answers);
-
-    Network network1000learn1 = new Network(1000, 2.0);
-    network1000learn1.train(data, answers);
-
-    System.out.println("");
-    System.out.println(String.format("  male, 167, 73: network500learn1: %.10f | network1000learn1: %.10f", network500learn1.predict(167, 73), network1000learn1.predict(167, 73)));
-    System.out.println(String.format("female, 105, 67: network500learn1: %.10f | network1000learn1: %.10f", network500learn1.predict(105, 67), network1000learn1.predict(105, 67)));
-    System.out.println(String.format("female, 120, 72: network500learn1: %.10f | network1000learn1: %.10f", network500learn1.predict(120, 72), network1000learn1.predict(120, 72)));
-    System.out.println(String.format("  male, 143, 67: network500learn1: %.10f | network1000learn1: %.10f", network500learn1.predict(143, 67), network1000learn1.predict(120, 72)));
-    System.out.println(String.format(" male', 130, 66: network500learn1: %.10f | network1000learn1: %.10f", network500learn1.predict(130, 66), network1000learn1.predict(130, 66)));
-
+    public Network(int epochs, double learnFactor, int[] layerSizes) {
+        this.epochs = epochs;
+        this.learnFactor = learnFactor;
+        this.layers = new Layer[layerSizes.length - 1];
+        for (int i = 0; i < layerSizes.length - 1; i++) {
+            layers[i] = new Layer(layerSizes[i], layerSizes[i + 1], random);
+        }
     }
 
+    public double predict(double input1, double input2) {
+        double[] inputs = {input1, input2};
+        double[] outputs = forward(inputs);
+        return outputs[0];
+    }
 
-    class Network {
-        int epochs = 0; //1000;
-        Double learnFactor = null;
-        List<Neuron> neurons = Arrays.asList(
-                new Neuron(), new Neuron(), new Neuron(),
-                new Neuron(), new Neuron(),
-                new Neuron());
+    public void train(List<List<Double>> trainData, List<Double> trainAnswers, List<List<Double>> valData, List<Double> valAnswers) {
+        double bestLoss = Double.MAX_VALUE;
+        for (int epoch = 0; epoch < epochs; epoch++) {
+            learnFactor *= 0.9999; // More aggressive learning rate decay
 
-        public Network(int epochs){
-            this.epochs = epochs;
-        }
-        public Network(int epochs, Double learnFactor) {
-            this.epochs = epochs;
-            this.learnFactor = learnFactor;
-        }
+            for (int i = 0; i < trainData.size(); i++) {
+                double[] inputs = trainData.get(i).stream().mapToDouble(d -> d).toArray();
+                double[] targets = {trainAnswers.get(i)};
+                backward(inputs, targets);
+            }
 
-        public Double predict(Integer input1, Integer input2){
-            return neurons.get(5).compute(
-                    neurons.get(4).compute(
-                            neurons.get(2).compute(input1, input2),
-                            neurons.get(1).compute(input1, input2)
-                    ),
-                    neurons.get(3).compute(
-                            neurons.get(1).compute(input1, input2),
-                            neurons.get(0).compute(input1, input2)
-                    )
-            );
-        }
-        public void train(List<List<Integer>> data, List<Double> answers){
-            Double bestEpochLoss = null;
-            for (int epoch = 0; epoch < epochs; epoch++){
-                // adapt neuron
-                Neuron epochNeuron = neurons.get(epoch % 6);
-                epochNeuron.mutate(this.learnFactor);
+            List<Double> predictions = new ArrayList<>();
+            for (List<Double> data : trainData) {
+                predictions.add(predict(data.get(0), data.get(1)));
+            }
+            double trainLoss = Util.meanSquareLoss(trainAnswers, predictions);
 
-                List<Double> predictions = new ArrayList<Double>();
-                for (int i = 0; i < data.size(); i++){
-                    predictions.add(i, this.predict(data.get(i).get(0), data.get(i).get(1)));
+            if (epoch % 50 == 0) {
+                List<Double> valPredictions = new ArrayList<>();
+                for (List<Double> data : valData) {
+                    valPredictions.add(predict(data.get(0), data.get(1)));
                 }
-                Double thisEpochLoss = Util.meanSquareLoss(answers, predictions);
+                double valLoss = Util.meanSquareLoss(valAnswers, valPredictions);
+                System.out.println(String.format("Epoch %d | Train Loss: %.10f | Val Loss: %.10f", epoch, trainLoss, valLoss));
+            }
 
-                if (epoch % 10 == 0) System.out.println(String.format("Epoch: %s | bestEpochLoss: %.15f | thisEpochLoss: %.15f", epoch, bestEpochLoss, thisEpochLoss));
-
-                if (bestEpochLoss == null){
-                    bestEpochLoss = thisEpochLoss;
-                    epochNeuron.remember();
-                } else {
-                    if (thisEpochLoss < bestEpochLoss){
-                        bestEpochLoss = thisEpochLoss;
-                        epochNeuron.remember();
-                    } else {
-                        epochNeuron.forget();
-                    }
-                }
+            if (trainLoss < bestLoss) {
+                bestLoss = trainLoss;
+                remember();
             }
         }
     }
 
-    class Neuron {
-        Random random = new Random();
-        private Double oldBias = random.nextDouble(-1, 1), bias = random.nextDouble(-1, 1);
-        public Double oldWeight1 = random.nextDouble(-1, 1), weight1 = random.nextDouble(-1, 1);
-        private Double oldWeight2 = random.nextDouble(-1, 1), weight2 = random.nextDouble(-1, 1);
+    private double[] forward(double[] inputs) {
+        double[] activations = inputs;
+        for (Layer layer : layers) {
+            activations = layer.forward(activations);
+        }
+        return activations;
+    }
 
-        public String toString(){
-            return String.format("oldBias: %.15f | bias: %.15f | oldWeight1: %.15f | weight1: %.15f | oldWeight2: %.15f | weight2: %.15f", this.oldBias, this.bias, this.oldWeight1, this.weight1, this.oldWeight2, this.weight2);
+    private void backward(double[] inputs, double[] targets) {
+        double[] outputs = forward(inputs);
+        double[] errors = new double[outputs.length];
+        for (int i = 0; i < outputs.length; i++) {
+            errors[i] = targets[i] - outputs[i];
         }
-
-        public void mutate(Double learnFactor){
-            int propertyToChange = random.nextInt(0, 3);
-            Double changeFactor = (learnFactor == null) ? random.nextDouble(-1, 1) : (learnFactor * random.nextDouble(-1, 1));
-            if (propertyToChange == 0){
-                this.bias += changeFactor;
-            } else if (propertyToChange == 1){
-                this.weight1 += changeFactor;
-            } else {
-                this.weight2 += changeFactor;
-            };
-        }
-        public void forget(){
-            bias = oldBias;
-            weight1 = oldWeight1;
-            weight2 = oldWeight2;
-        }
-        public void remember(){
-            oldBias = bias;
-            oldWeight1 = weight1;
-            oldWeight2 = weight2;
-        }
-        public double compute(double input1, double input2){
-//      this.input1 = input1;  this.input2 = input2;
-            double preActivation = (this.weight1 * input1) + (this.weight2 * input2) + this.bias;
-            double output = Util.sigmoid(preActivation);
-            return output;
+        for (int i = layers.length - 1; i >= 0; i--) {
+            errors = layers[i].backward(errors, learnFactor);
         }
     }
 
-    class Util {
-        public static double sigmoid(double in){
-            return 1 / (1 + Math.exp(-in));
+    private void remember() {
+        for (Layer layer : layers) {
+            layer.remember();
         }
-        public static double sigmoidDeriv(double in){
-            double sigmoid = Util.sigmoid(in);
-            return sigmoid * (1 - in);
-        }
-        /** Assumes array args are same length */
-        public static Double meanSquareLoss(List<Double> correctAnswers, List<Double> predictedAnswers){
-            double sumSquare = 0;
-            for (int i = 0; i < correctAnswers.size(); i++){
-                double error = correctAnswers.get(i) - predictedAnswers.get(i);
-                sumSquare += (error * error);
+    }
+}
+
+class Layer {
+    int inputSize;
+    int outputSize;
+    double[][] weights;
+    double[] biases;
+    double[][] bestWeights;
+    double[] bestBiases;
+    double[][] lastInputs;
+    double[][] lastOutputs;
+    Random random;
+
+    public Layer(int inputSize, int outputSize, Random random) {
+        this.inputSize = inputSize;
+        this.outputSize = outputSize;
+        this.random = random;
+        this.weights = new double[outputSize][inputSize];
+        this.biases = new double[outputSize];
+        this.bestWeights = new double[outputSize][inputSize];
+        this.bestBiases = new double[outputSize];
+        initializeWeights();
+    }
+
+    private void initializeWeights() {
+        for (int i = 0; i < outputSize; i++) {
+            for (int j = 0; j < inputSize; j++) {
+                weights[i][j] = random.nextGaussian() * Math.sqrt(2.0 / inputSize); // Xavier initialization
             }
-            return sumSquare / (correctAnswers.size());
+            biases[i] = 0.0;
         }
+    }
+
+    public double[] forward(double[] inputs) {
+        lastInputs = new double[inputs.length][1];
+        lastOutputs = new double[outputSize][1];
+        double[] outputs = new double[outputSize];
+        for (int i = 0; i < outputSize; i++) {
+            double activation = biases[i];
+            for (int j = 0; j < inputSize; j++) {
+                activation += weights[i][j] * inputs[j];
+                lastInputs[j][0] = inputs[j];
+            }
+            outputs[i] = Util.sigmoid(activation);
+            lastOutputs[i][0] = outputs[i];
+        }
+        return outputs;
+    }
+
+    public double[] backward(double[] errors, double learnFactor) {
+        double[] propagatedErrors = new double[inputSize];
+        for (int i = 0; i < outputSize; i++) {
+            double delta = errors[i] * Util.sigmoidDerivative(lastOutputs[i][0]);
+            for (int j = 0; j < inputSize; j++) {
+                propagatedErrors[j] += delta * weights[i][j];
+                weights[i][j] += learnFactor * delta * lastInputs[j][0];
+            }
+            biases[i] += learnFactor * delta;
+        }
+        return propagatedErrors;
+    }
+
+    public void remember() {
+        for (int i = 0; i < outputSize; i++) {
+            System.arraycopy(weights[i], 0, bestWeights[i], 0, inputSize);
+            bestBiases[i] = biases[i];
+        }
+    }
+}
+
+class Util {
+    public static double sigmoid(double x) {
+        return 1 / (1 + Math.exp(-x));
+    }
+
+    public static double sigmoidDerivative(double x) {
+        return x * (1 - x);
+    }
+
+    public static double meanSquareLoss(List<Double> correct, List<Double> predicted) {
+        double sum = 0;
+        for (int i = 0; i < correct.size(); i++) {
+            double error = correct.get(i) - predicted.get(i);
+            sum += error * error;
+        }
+        return sum / correct.size();
     }
 }
