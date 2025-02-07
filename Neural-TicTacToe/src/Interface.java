@@ -9,6 +9,7 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.paint.Color;
@@ -21,13 +22,7 @@ import java.util.stream.Collectors;
 
 public class Interface extends Application {
     @FXML
-    private Canvas canvasAddPoints;
-    @FXML
-    private Canvas canvasPlotTrainingPoints;
-    @FXML
-    private Canvas canvasPredict;
-    @FXML
-    private Canvas canvasLine;
+    private Canvas canvasUnified;
     @FXML
     private TextField txt1;
     @FXML
@@ -52,6 +47,10 @@ public class Interface extends Application {
     private Button btnClearGrid;
     @FXML
     private Button btnRetrain;
+    @FXML
+    private Slider sliderPointSize;
+    @FXML
+    private Slider sliderZoom;
 
     private Network network;
     private List<List<Double>> data;
@@ -71,14 +70,8 @@ public class Interface extends Application {
         primaryStage.show();
 
         // Bind canvas size to the parent container size
-        canvasAddPoints.widthProperty().bind(((AnchorPane) canvasAddPoints.getParent()).widthProperty());
-        canvasAddPoints.heightProperty().bind(((AnchorPane) canvasAddPoints.getParent()).heightProperty().subtract(166));
-        canvasPlotTrainingPoints.widthProperty().bind(((AnchorPane) canvasPlotTrainingPoints.getParent()).widthProperty());
-        canvasPlotTrainingPoints.heightProperty().bind(((AnchorPane) canvasPlotTrainingPoints.getParent()).heightProperty().subtract(166));
-        canvasPredict.widthProperty().bind(((AnchorPane) canvasPredict.getParent()).widthProperty());
-        canvasPredict.heightProperty().bind(((AnchorPane) canvasPredict.getParent()).heightProperty().subtract(166));
-        canvasLine.widthProperty().bind(((AnchorPane) canvasLine.getParent()).widthProperty());
-        canvasLine.heightProperty().bind(((AnchorPane) canvasLine.getParent()).heightProperty().subtract(166));
+        canvasUnified.widthProperty().bind(((AnchorPane) canvasUnified.getParent()).widthProperty());
+        canvasUnified.heightProperty().bind(((AnchorPane) canvasUnified.getParent()).heightProperty().subtract(166));
 
         // Training data points
         double[][] dataArray = {
@@ -104,8 +97,8 @@ public class Interface extends Application {
         int inputNeurons = dataArray[0].length;
 
         // Convert double[][] to List<List<Double>> and double[] to List<Double> in one line each
-        List<List<Double>> data = Arrays.stream(dataArray).map(row -> Arrays.stream(row).boxed().collect(Collectors.toList())).collect(Collectors.toList());
-        List<Double> answers = Arrays.stream(answersArray).boxed().collect(Collectors.toList());
+        data = Arrays.stream(dataArray).map(row -> Arrays.stream(row).boxed().collect(Collectors.toList())).collect(Collectors.toList());
+        answers = Arrays.stream(answersArray).boxed().collect(Collectors.toList());
 
         // Initialize the network
         int epochs = 20000;
@@ -139,13 +132,19 @@ public class Interface extends Application {
         });
     }
 
-    @FXML
-    private void drawLine() {
-        GraphicsContext gc = canvasLine.getGraphicsContext2D();
-        gc.clearRect(0, 0, canvasLine.getWidth(), canvasLine.getHeight());
-        gc.setStroke(Color.BLACK);
-        gc.setLineWidth(2);
-        gc.strokeLine(0, 0, canvasLine.getWidth(), canvasLine.getHeight());
+    private void drawOnCanvas(Runnable drawingLogic) {
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() {
+                Platform.runLater(drawingLogic);
+                return null;
+            }
+        };
+        new Thread(task).start();
+    }
+
+    private double getExponentialZoomValue() {
+        return Math.exp(sliderZoom.getValue());
     }
 
     @FXML
@@ -154,67 +153,48 @@ public class Interface extends Application {
             int numPoints = Integer.parseInt(txtPoints.getText());
             int gridSize = (int) Math.sqrt(numPoints);
             double spacing = Double.parseDouble(txtSpacing.getText());
-            System.out.println("Grid size: " + gridSize + ", Spacing: " + spacing);
+            double pointSize = sliderPointSize.getValue();
+            double zoom = getExponentialZoomValue();
+            System.out.println("Grid size: " + gridSize + ", Spacing: " + spacing + ", Point size: " + pointSize + ", Zoom: " + zoom);
 
-            // Clear the canvas for add points
-            GraphicsContext gc = canvasAddPoints.getGraphicsContext2D();
-            gc.clearRect(0, 0, canvasAddPoints.getWidth(), canvasAddPoints.getHeight());
+            drawOnCanvas(() -> {
+                GraphicsContext gc = canvasUnified.getGraphicsContext2D();
+                gc.clearRect(0, 0, canvasUnified.getWidth(), canvasUnified.getHeight());
 
-            // Calculate the scale factor to fit points within the canvas
-            double scaleX = canvasAddPoints.getWidth() / (gridSize * spacing);
-            double scaleY = canvasAddPoints.getHeight() / (gridSize * spacing);
-            double scale = Math.min(scaleX, scaleY);
+                for (int i = -gridSize / 2; i <= gridSize / 2; i++) {
+                    for (int j = -gridSize / 2; j <= gridSize / 2; j++) {
+                        double x = i * spacing;
+                        double y = j * spacing;
+                        double prediction = network.predict(x, y);
 
-            // Create a task to generate and add points in the background
-            Task<Void> task = new Task<>() {
-                @Override
-                protected Void call() {
-                    for (int i = -gridSize / 2; i <= gridSize / 2; i++) {
-                        for (int j = -gridSize / 2; j <= gridSize / 2; j++) {
-                            double x = i * spacing;
-                            double y = j * spacing;
-                            double prediction = network.predict(x, y);
-
-                            // Draw the point on the canvas
-                            Platform.runLater(() -> {
-                                gc.save();
-                                gc.scale(scale, scale);
-                                if ((y > x && prediction > 0.5) || (y <= x && prediction <= 0.5)) {
-                                    gc.setFill(Color.GREEN);
-                                } else {
-                                    gc.setFill(Color.RED);
-                                }
-                                gc.fillOval(x + canvasAddPoints.getWidth() / (2 * scale), y + canvasAddPoints.getHeight() / (2 * scale), 5 / scale, 5 / scale);
-                                gc.restore();
-                                // Draw the line x = y
-                                gc.setStroke(Color.BLACK);
-                                gc.setLineWidth(2);
-                                gc.strokeLine(0, 0, canvasAddPoints.getWidth(), canvasAddPoints.getHeight());
-                            });
+                        gc.save();
+                        gc.scale(zoom, zoom);
+                        if ((y > x && prediction > 0.5) || (y <= x && prediction <= 0.5)) {
+                            gc.setFill(Color.GREEN);
+                        } else {
+                            gc.setFill(Color.RED);
                         }
+                        gc.fillOval(x + canvasUnified.getWidth() / (2 * zoom), y + canvasUnified.getHeight() / (2 * zoom), pointSize / zoom, pointSize / zoom);
+                        gc.restore();
                     }
-                    return null;
                 }
-            };
-
-            // Start the task in a new thread
-            new Thread(task).start();
-
+                // Draw the line x = y
+                gc.setStroke(Color.BLACK);
+                gc.setLineWidth(2);
+                gc.strokeLine(0, 0, canvasUnified.getWidth(), canvasUnified.getHeight());
+            });
         } catch (NumberFormatException e) {
             lbl1.setText("Invalid number of points");
         }
     }
 
-    private void plotTrainingPoints() {
-        GraphicsContext gc = canvasPlotTrainingPoints.getGraphicsContext2D();
-        gc.clearRect(0, 0, canvasPlotTrainingPoints.getWidth(), canvasPlotTrainingPoints.getHeight());
 
-        // Calculate the scale factor to fit points within the canvas
-        double maxX = data.stream().mapToDouble(point -> Math.abs(point.get(0))).max().orElse(1);
-        double maxY = data.stream().mapToDouble(point -> Math.abs(point.get(1))).max().orElse(1);
-        double scaleX = canvasPlotTrainingPoints.getWidth() / (2 * maxX);
-        double scaleY = canvasPlotTrainingPoints.getHeight() / (2 * maxY);
-        double scale = Math.min(scaleX, scaleY);
+    private void plotTrainingPoints() {
+        GraphicsContext gc = canvasUnified.getGraphicsContext2D();
+        gc.clearRect(0, 0, canvasUnified.getWidth(), canvasUnified.getHeight());
+
+        double pointSize = sliderPointSize.getValue();
+        double zoom = getExponentialZoomValue();
 
         for (int i = 0; i < data.size(); i++) {
             List<Double> point = data.get(i);
@@ -224,13 +204,13 @@ public class Interface extends Application {
 
             Platform.runLater(() -> {
                 gc.save();
-                gc.scale(scale, scale);
+                gc.scale(zoom, zoom);
                 if ((y > x && answer > 0.5) || (y <= x && answer <= 0.5)) {
                     gc.setFill(Color.GREEN);
                 } else {
                     gc.setFill(Color.RED);
                 }
-                gc.fillOval(x + canvasPlotTrainingPoints.getWidth() / (2 * scale), y + canvasPlotTrainingPoints.getHeight() / (2 * scale), 5 / scale, 5 / scale);
+                gc.fillOval(x + canvasUnified.getWidth() / (2 * zoom), y + canvasUnified.getHeight() / (2 * zoom), pointSize / zoom, pointSize / zoom);
                 gc.restore();
             });
         }
@@ -244,28 +224,25 @@ public class Interface extends Application {
             double prediction = network.predict(value1, value2);
             lbl1.setText(String.format("Prediction: %.10f", prediction));
 
-            // Clear the canvas for predictions
-            GraphicsContext gc = canvasPredict.getGraphicsContext2D();
+            drawOnCanvas(() -> {
+                GraphicsContext gc = canvasUnified.getGraphicsContext2D();
+                double pointSize = sliderPointSize.getValue();
+                double zoom = getExponentialZoomValue();
 
-            // Calculate the scale factor to fit points within the canvas
-            double maxX = data.stream().mapToDouble(point -> Math.abs(point.get(0))).max().orElse(1);
-            double maxY = data.stream().mapToDouble(point -> Math.abs(point.get(1))).max().orElse(1);
-            double scaleX = canvasPredict.getWidth() / (2 * maxX);
-            double scaleY = canvasPredict.getHeight() / (2 * maxY);
-            double scale = Math.min(scaleX, scaleY);
+                gc.clearRect(0, 0, canvasUnified.getWidth(), canvasUnified.getHeight());
 
-            // Draw the prediction point on the canvas
-            gc.save();
-            gc.scale(scale, scale);
-            if ((value2 > value1 && prediction > 0.5) || (value2 <= value1 && prediction <= 0.5)) {
-                gc.setFill(Color.GREEN);
-                lbl2.setText("Prediction is correct");
-            } else {
-                gc.setFill(Color.RED);
-                lbl2.setText("Prediction is incorrect");
-            }
-            gc.fillOval(value1 + canvasPredict.getWidth() / (2 * scale), value2 + canvasPredict.getHeight() / (2 * scale), 5 / scale, 5 / scale);
-            gc.restore();
+                gc.save();
+                gc.scale(zoom, zoom);
+                if ((value2 > value1 && prediction > 0.5) || (value2 <= value1 && prediction <= 0.5)) {
+                    gc.setFill(Color.GREEN);
+                    lbl2.setText("Prediction is correct");
+                } else {
+                    gc.setFill(Color.RED);
+                    lbl2.setText("Prediction is incorrect");
+                }
+                gc.fillOval(value1 + canvasUnified.getWidth() / (2 * zoom), value2 + canvasUnified.getHeight() / (2 * zoom), pointSize / zoom, pointSize / zoom);
+                gc.restore();
+            });
         } catch (NumberFormatException e) {
             lbl1.setText("Invalid input");
         }
@@ -289,13 +266,10 @@ public class Interface extends Application {
         }
     }
 
+
     @FXML
     private void handleClearGrid() {
-        GraphicsContext gcAddPoints = canvasAddPoints.getGraphicsContext2D();
-        GraphicsContext gcPlotTrainingPoints = canvasPlotTrainingPoints.getGraphicsContext2D();
-        GraphicsContext gcPredict = canvasPredict.getGraphicsContext2D();
-        gcAddPoints.clearRect(0, 0, canvasAddPoints.getWidth(), canvasAddPoints.getHeight());
-        gcPlotTrainingPoints.clearRect(0, 0, canvasPlotTrainingPoints.getWidth(), canvasPlotTrainingPoints.getHeight());
-        gcPredict.clearRect(0, 0, canvasPredict.getWidth(), canvasPredict.getHeight());
+        GraphicsContext gcUnified = canvasUnified.getGraphicsContext2D();
+        gcUnified.clearRect(0, 0, canvasUnified.getWidth(), canvasUnified.getHeight());
     }
 }
