@@ -25,6 +25,8 @@ public class Interface extends Application {
     @FXML
     private Canvas canvasPredict;
     @FXML
+    private Canvas canvasLine;
+    @FXML
     private TextField txt1;
     @FXML
     private TextField txt2;
@@ -73,6 +75,8 @@ public class Interface extends Application {
         canvasPlotTrainingPoints.heightProperty().bind(((AnchorPane) canvasPlotTrainingPoints.getParent()).heightProperty().subtract(166));
         canvasPredict.widthProperty().bind(((AnchorPane) canvasPredict.getParent()).widthProperty());
         canvasPredict.heightProperty().bind(((AnchorPane) canvasPredict.getParent()).heightProperty().subtract(166));
+        canvasLine.widthProperty().bind(((AnchorPane) canvasLine.getParent()).widthProperty());
+        canvasLine.heightProperty().bind(((AnchorPane) canvasLine.getParent()).heightProperty().subtract(166));
 
         // Initialize the network
         int epochs = 20000;
@@ -101,6 +105,9 @@ public class Interface extends Application {
         txtEpochs.setText(epochs + "");
         txtNeurons.setText(neurons + "");
 
+        // Draw the line x = y
+        //drawLine();
+
         // Set the button actions
         btnAddPoints.setOnAction(event -> handleAddPoints());
         btnPlotTrainingPoints.setOnAction(event -> plotTrainingPoints());
@@ -111,6 +118,15 @@ public class Interface extends Application {
         primaryStage.setOnCloseRequest(event -> {
             System.exit(0);
         });
+    }
+
+    @FXML
+    private void drawLine() {
+        GraphicsContext gc = canvasLine.getGraphicsContext2D();
+        gc.clearRect(0, 0, canvasLine.getWidth(), canvasLine.getHeight());
+        gc.setStroke(Color.BLACK);
+        gc.setLineWidth(2);
+        gc.strokeLine(0, 0, canvasLine.getWidth(), canvasLine.getHeight());
     }
 
     @FXML
@@ -151,6 +167,10 @@ public class Interface extends Application {
                                 }
                                 gc.fillOval(x + canvasAddPoints.getWidth() / (2 * scale), y + canvasAddPoints.getHeight() / (2 * scale), 5 / scale, 5 / scale);
                                 gc.restore();
+                                // Draw the line x = y
+                                gc.setStroke(Color.BLACK);
+                                gc.setLineWidth(2);
+                                gc.strokeLine(0, 0, canvasAddPoints.getWidth(), canvasAddPoints.getHeight());
                             });
                         }
                     }
@@ -160,6 +180,7 @@ public class Interface extends Application {
 
             // Start the task in a new thread
             new Thread(task).start();
+
         } catch (NumberFormatException e) {
             lbl1.setText("Invalid number of points");
         }
