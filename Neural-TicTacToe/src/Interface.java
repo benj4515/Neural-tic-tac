@@ -7,10 +7,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.Slider;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
@@ -51,10 +48,13 @@ public class Interface extends Application {
     private Slider sliderPointSize;
     @FXML
     private Slider sliderZoom;
+    @FXML
+    private ToggleButton tglToggleMode;
 
     private Network network;
     private List<List<Double>> data;
     private List<Double> answers;
+    private boolean useNewMode = false;
 
     public static void main(String[] args) {
         launch(args);
@@ -125,6 +125,7 @@ public class Interface extends Application {
         btnPlotTrainingPoints.setOnAction(event -> plotTrainingPoints());
         btnClearGrid.setOnAction(event -> handleClearGrid());
         btnRetrain.setOnAction(event -> handleRetrain());
+        tglToggleMode.setOnAction(event -> toggleMode());
 
         // Add a shutdown hook to stop all running threads
         primaryStage.setOnCloseRequest(event -> {
@@ -153,15 +154,27 @@ public class Interface extends Application {
     }
 
     private Color interpolateColor(double value1, double value2, double prediction) {
-        double confidence = computeConfidence(value1, value2, prediction);
-
-        if ((value2 > value1 && prediction > 0.5) || (value2 <= value1 && prediction <= 0.5)) {
-            // Prediction is correct: smoothly go from green → yellow → green
-            return Color.GREEN.interpolate(Color.YELLOW, 1.0 - confidence);
+        if (useNewMode) {
+            // New mode: 0 red, 0.5 yellow, 1 green with smooth transition
+            return Color.RED.interpolate(Color.YELLOW, prediction * 2).interpolate(Color.GREEN, Math.max(0, (prediction - 0.5) * 2));
         } else {
-            // Prediction is incorrect: smoothly go from yellow → red
-            return Color.YELLOW.interpolate(Color.RED, 1.0 - confidence);
+            // Current mode
+            double confidence = computeConfidence(value1, value2, prediction);
+
+            if ((value2 > value1 && prediction > 0.5) || (value2 <= value1 && prediction <= 0.5)) {
+                // Prediction is correct: smoothly go from green → yellow → green
+                return Color.GREEN.interpolate(Color.YELLOW, 1.0 - confidence);
+            } else {
+                // Prediction is incorrect: smoothly go from yellow → red
+                return Color.YELLOW.interpolate(Color.RED, 1.0 - confidence);
+            }
         }
+    }
+
+    @FXML
+    private void toggleMode() {
+        useNewMode = !useNewMode;
+        tglToggleMode.setText(useNewMode ? "Prediction Gradient" : "Prediction Confidence");
     }
 
     @FXML
@@ -269,7 +282,7 @@ public class Interface extends Application {
             network = new Network(epochs, 0.01, new int[]{2, neurons, 1});
 
             // Retrain the network
-            network.train(data.subList(0, 6), answers.subList(0, 6), List.of(List.of(3.0, 3.0), List.of(4.0, 4.0)), List.of(1.0, 1.0));
+            network.train(data.subList(0, data.size()), answers.subList(0, answers.size()), List.of(List.of(3.0, 3.0), List.of(4.0, 4.0)), List.of(1.0, 1.0));
 
             lbl1.setText("Network retrained successfully");
         } catch (NumberFormatException e) {
